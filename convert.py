@@ -1,59 +1,65 @@
-import argparse
-import re
-from docx import Document
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.units import inch
+import os
+from time import strftime
+from sys import platform, exc_info
 
-def clean_text(text):
-    """Removes invalid characters for reportlab and escapes special symbols"""
-    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    text = re.sub(r"\s+", " ", text)  # Remove extra spaces
-    return text.strip()
+def n_files(directory):
+    total = 0
+    for file in os.listdir(directory):
+        if file.endswith(('.doc', '.docx', '.tmd')):
+            total += 1
+    return total
 
-def docx_to_pdf(docx_path, pdf_path):
-    doc = Document(docx_path)
-    pdf = SimpleDocTemplate(pdf_path, pagesize=letter)
-    
-    styles = getSampleStyleSheet()
-    story = []
+def doc2pdf_libreoffice(doc, ending, newdic):
+    cmd = f"lowriter --convert-to pdf:writer_pdf_Export '{doc}'"
+    os.system(cmd)
+    new_file = doc.replace(ending, ".pdf")
+    if platform == 'linux':
+        cmdmove = f"mv '{new_file}' '{newdic}'"
+    elif platform == 'win32':
+        new_file = new_file.replace("/", "\\")
+        cmdmove = f"move '{new_file}' '{newdic}'"
+    os.system(cmdmove)
+    print(new_file)
 
-    # Define Styles
-    title_style = ParagraphStyle(
-        "Title",
-        parent=styles["Heading1"],
-        fontSize=18,
-        alignment=TA_CENTER,
-        textColor=colors.darkblue
-    )
-    
-    normal_style = styles["Normal"]
-    normal_style.fontSize = 12
-    normal_style.leading = 14
-
-    for para in doc.paragraphs:
-        text = clean_text(para.text)  # Fix encoding issues
-        
-        if not text:  # Skip empty lines
-            continue
-
-        if para.style.name.startswith("Heading"):
-            p = Paragraph(text, title_style)
-        else:
-            p = Paragraph(text, normal_style)
-
-        story.append(p)
-        story.append(Spacer(1, 0.2 * inch))
-
-    pdf.build(story)
+def is_tool(name):
+    from shutil import which
+    return which(name) is not None
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Convert .docx to PDF with Formatting")
-    parser.add_argument("docx_file", help="Path to the input .docx file")
-    parser.add_argument("pdf_file", help="Path to the output PDF file")
-    args = parser.parse_args()
+    print('\nPlease note that this will overwrite any existing PDF files')
+    print('For best results, close Microsoft Word before proceeding')
+    
+    directory = os.getcwd()
+    
+    if n_files(directory) == 0:
+        print('There are no files to convert')
+        exit()
+    
+    print('Starting conversion... \n')
 
-    docx_to_pdf(args.docx_file, args.pdf_file)
+    try:
+        if not is_tool('libreoffice'):
+            from win32com import client
+            word = client.DispatchEx('Word.Application')
+        
+        for file in os.listdir(directory):
+            if file.endswith(('.doc', '.docx', '.tmd')):
+                ending = os.path.splitext(file)[1]
+                
+                if is_tool('libreoffice'):
+                    in_file = os.path.abspath(os.path.join(directory, file))
+                    new_file = os.path.abspath(os.path.join(directory, 'PDFs'))
+                    doc2pdf_libreoffice(in_file, ending, new_file)
+                else:
+                    new_name = file.replace(ending, ".pdf")
+                    in_file = os.path.abspath(os.path.join(directory, file))
+                    new_file = os.path.abspath(os.path.join(directory, 'PDFs', new_name))
+                    doc = word.Documents.Open(in_file)
+                    print(new_name)
+                    doc.SaveAs(new_file, FileFormat=17)
+                    doc.Close()
+    
+    except Exception as e:
+        print(e)
+
+    print('\nConversion finished at ' + strftime("%H:%M:%S"))
