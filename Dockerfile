@@ -1,17 +1,24 @@
-FROM python:3.9-slim
+# Use an official Python image as a base
+FROM python:3.12-slim
 
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Install necessary dependencies
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+# Install required system dependencies for LibreOffice
+RUN apt-get update && apt-get install -y libreoffice
 
-# Copy the script and requirements
-COPY convert.py send_email.py network_cheatsheet.docx ./
+# Copy the application files into the container
+COPY convert.py send_email.py ./
+COPY network_cheatsheet.pdf ./
 
-# Install required Python packages (excluding smtplib)
-RUN pip install --no-cache-dir python-docx reportlab
+# Install Python dependencies if needed (e.g., smtplib does not require installation)
+# You can add a requirements.txt if you have additional dependencies
+# RUN pip install -r requirements.txt
 
-# Convert DOCX to PDF and send email
-CMD python convert.py network_cheatsheet.docx network_cheatsheet.pdf && python send_email.py
+# Set environment variables for email configuration
+ENV EMAIL_SENDER=""
+ENV EMAIL_PASSWORD=""
+ENV EMAIL_RECEIVER=""
 
+# Define the default command to run conversion and send email
+CMD ["sh", "-c", "python convert.py && python send_email.py"]
