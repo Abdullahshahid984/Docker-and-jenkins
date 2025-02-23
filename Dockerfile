@@ -8,6 +8,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libreoffice && rm -rf /var/lib/apt/lists/*
 
 # Copy all available files into the container
+# Set LibreOffice temporary directory to ensure writable permissions
+ENV HOME=/app
 COPY . /app/
 
 # Set environment variables for email configuration
