@@ -27,7 +27,6 @@ pipeline {
                         sh """
                             docker run --rm \
                               -e EMAIL_SENDER="${EMAIL_SENDER}" \
-                              -e EMAIL_PASSWORD="${EMAIL_PASSWORD}" \
                               -e EMAIL_RECEIVER="${EMAIL_SENDER}" \
                               ${IMAGE_NAME}
                         """
